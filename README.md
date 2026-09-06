@@ -1,17 +1,17 @@
-# 🔥 ToolForge — 企业级 Agent 工具注册与执行框架
+# 🔥 Shikigami — 企业级 Agent 工具注册与执行框架
 
 > **极简 Token · 零越权 · 自动资源回收 · 深度 DTO 嵌套**
 
-**ToolForge** 专为 LLM Agent 生产落地打造，一揽子解决 **Token 费用暴涨**、**`user_id` 伪造越权**、**数据库/Redis 连接泄漏** 以及 **复杂 DTO 开发繁琐** 四大硬伤。
+**Shikigami** 专为 LLM Agent 生产落地打造，一揽子解决 **Token 费用暴涨**、**`user_id` 伪造越权**、**数据库/Redis 连接泄漏** 以及 **复杂 DTO 开发繁琐** 四大硬伤。
 
 ---
 
 ## 📦 安装
 
 ```bash
-pip install toolforge          # 基础版（pydantic 即可运行）
-pip install "toolforge[langchain]"     # 需要导出 LangChain StructuredTool 时
-pip install "toolforge[nest-asyncio]"  # 需要在异步环境内调用 default_registry.execute 时
+pip install shikigami          # 基础版（pydantic 即可运行）
+pip install "shikigami[langchain]"     # 需要导出 LangChain StructuredTool 时
+pip install "shikigami[nest-asyncio]"  # 需要在异步环境内调用 default_registry.execute 时
 ```
 
 从源码开发调试：
@@ -25,7 +25,7 @@ pip install -e ".[dev,langchain,nest-asyncio]"
 
 ## ✨ 核心亮点
 
-| 痛点 | ToolForge 解决方案 |
+| 痛点 | Shikigami 解决方案 |
 | :--- | :--- |
 | 💸 **Token 消耗过大** | 内置元工具（`list_tools`、`get_tool_info`）实现“按需加载”，告别一次性塞入数百个 JSON Schema |
 | 🔓 **IDOR 越权** | 使用 `@ContextParam` 标记敏感参数，对 AI **绝对不可见**，由后端通过 `contextvars` 强制注入 |
@@ -47,7 +47,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from toolforge import ContextParam, context, default_registry
+from shikigami import ContextParam, context, default_registry
 
 # 1. 定义"后端注入"类型别名：带 ContextParam 标记的参数对 AI 完全不可见
 InjectUser = Annotated[dict, ContextParam("user")]
@@ -223,7 +223,7 @@ async def batch_process(orders: List[OrderDTO]):
 
 ```python
 from fastapi import FastAPI, Request
-from toolforge import context
+from shikigami import context
 
 app = FastAPI()
 
@@ -339,7 +339,7 @@ async def search_meta(q: str):
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from toolforge import default_registry
+from shikigami import default_registry
 
 meta_tools = default_registry.get_meta_tools()  # 4 个固定 StructuredTool
 
@@ -392,9 +392,9 @@ meta_tools = default_registry.get_meta_tools(
 单文件核心已按职责拆分到 `registry/` 子包，可通过改造各模块实现自定义扩展（如替换 `schema_builder` 定制参数解析、继承 `UniversalToolRegistry` 覆写钩子）；`register.py` 是向后兼容的转发层，旧 import 路径保持不变。
 
 ```
-toolforge/
+shikigami/
 ├── __init__.py              # 顶层导出（default_registry / context / ContextParam / ...）
-├── register.py              # 兼容转发层：from toolforge.register import ... 仍可用
+├── register.py              # 兼容转发层：from shikigami.register import ... 仍可用
 └── registry/
     ├── __init__.py          # 子包汇总导出
     ├── markers.py           # ContextParam / ResourceParam / context / set_agent_context
@@ -425,7 +425,7 @@ python -m pytest tests/
 
 ---
 
-## 🌟 为何选择 ToolForge？
+## 🌟 为何选择 Shikigami？
 
 - ✅ **安全第一**：敏感参数永不落盘、永不进 LLM 上下文。
 - ✅ **开发效率**：一行装饰器 + 类型注解，自动生成 AI 可用的参数描述。

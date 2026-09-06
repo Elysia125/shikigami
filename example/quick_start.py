@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ToolForge 快速上手示例
+Shikigami 快速上手示例
 
 展示核心功能：
 1. 注册工具分类
@@ -15,8 +15,8 @@ from typing import Annotated
 
 from pydantic import Field
 
-# 从 ToolForge 导入核心 API
-from toolforge import default_registry, context, ContextParam
+# 从 Shikigami 导入核心 API
+from shikigami import default_registry, context, ContextParam
 
 
 async def main():

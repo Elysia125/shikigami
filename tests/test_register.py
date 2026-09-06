@@ -4,8 +4,8 @@ from typing import Annotated, List
 import pytest
 from pydantic import BaseModel, ConfigDict, Field
 
-from toolforge import ResourceParam, UniversalToolRegistry, context
-from toolforge.register import parse_docstring, ContextParam
+from shikigami import ResourceParam, UniversalToolRegistry, context
+from shikigami.register import parse_docstring, ContextParam
 
 # 导入核心注册表及助手
 

@@ -12,7 +12,7 @@
 import asyncio
 from typing import Annotated, Any
 
-from toolforge import ResourceParam, context, default_registry
+from shikigami import ResourceParam, context, default_registry
 
 default_registry.add_category("系统", "系统诊断模块")
 
@@ -116,12 +116,12 @@ async def main():
     print("\n" + "=" * 60)
     print("【3. after_execute 钩子抛异常时的降级】")
     import logging
-    logging.getLogger("toolforge").disabled = True   # 屏蔽框架异常日志，聚焦降级文本
+    logging.getLogger("shikigami").disabled = True   # 屏蔽框架异常日志，聚焦降级文本
     try:
         default_registry.set_after_execute(lambda name, args: 1 / 0)
         print(await default_registry.aexecute("add_numbers", {"a": 1, "b": 1}))
     finally:
-        logging.getLogger("toolforge").disabled = False
+        logging.getLogger("shikigami").disabled = False
 
     # ---------- 4. 展示生成器 finally 的释放机制 ----------
     print("\n" + "=" * 60)

@@ -11,7 +11,7 @@ Scope 权限控制 + set_agent_context 示例
 
 import asyncio
 
-from toolforge import ContextParam, context, default_registry, set_agent_context
+from shikigami import ContextParam, context, default_registry, set_agent_context
 from typing import Annotated
 
 InjectUser = Annotated[dict, ContextParam("user")]

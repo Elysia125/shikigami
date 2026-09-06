@@ -3,10 +3,10 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["toolforge", "toolforge.registry"]
+packages = ["shikigami", "shikigami.registry"]
 
 [project]
-name = "toolforge"
+name = "shikigami"
 version = "0.1.0"
 description = "Enterprise-grade tool registry for LLM Agents with IDOR defense, token compression, and auto resource lifecycle"
 readme = "README.md"
@@ -40,9 +40,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Elysia125/toolforge"
-Repository = "https://github.com/Elysia125/toolforge"
-Issues = "https://github.com/Elysia125/toolforge/issues"
+Homepage = "https://github.com/Elysia125/shikigami"
+Repository = "https://github.com/Elysia125/shikigami"
+Issues = "https://github.com/Elysia125/shikigami/issues"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

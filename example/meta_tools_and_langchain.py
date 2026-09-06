@@ -16,7 +16,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from toolforge import ContextParam, default_registry, set_agent_context
+from shikigami import ContextParam, default_registry, set_agent_context
 
 InjectUser = Annotated[dict, ContextParam("user")]
 

@@ -1,5 +1,5 @@
 """
-ToolForge - Enterprise-grade Agent Tool Registry
+Shikigami - Enterprise-grade Agent Tool Registry
 """
 
 from .registry import (

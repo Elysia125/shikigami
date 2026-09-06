@@ -13,7 +13,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from toolforge import ContextParam, ResourceParam, context, default_registry, set_agent_context
+from shikigami import ContextParam, ResourceParam, context, default_registry, set_agent_context
 
 # ---------- 便捷注入别名 ----------
 InjectUser = Annotated[dict, ContextParam("user")]

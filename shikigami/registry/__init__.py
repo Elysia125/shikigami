@@ -1,4 +1,4 @@
-"""ToolForge Registry 子包（由原单文件 toolforge/register.py 拆分）
+"""Shikigami Registry 子包（由原单文件 shikigami/register.py 拆分）
 
 模块职责：
 - markers        注入标记与请求上下文（ContextParam / ResourceParam / context / set_agent_context）
