@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["toolforge", "toolforge.registry"]
+
+[project]
+name = "toolforge"
+version = "0.1.0"
+description = "Enterprise-grade tool registry for LLM Agents with IDOR defense, token compression, and auto resource lifecycle"
+readme = "README.md"
+authors = [
+    { name = "Elysia", email = "feng89310@gmail.com" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: LangChain",
+    "Intended Audience :: Developers",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=0.1.0"]
+nest-asyncio = ["nest-asyncio>=1.6.0"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Elysia125/toolforge"
+Repository = "https://github.com/Elysia125/toolforge"
+Issues = "https://github.com/Elysia125/toolforge/issues"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
