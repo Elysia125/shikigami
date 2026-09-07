@@ -8,6 +8,8 @@ from typing import Any, Callable, Dict, Set, Type
 
 from pydantic import BaseModel, ValidationError
 
+from ..trace import AbstractAgentTrace
+from ..utils.serialization import jsonable, serialize_payload
 from .class_meta import format_type_for_prompt, reconstruct_instance
 from .docstring import parse_docstring
 from .introspection import is_undefined
@@ -19,8 +21,8 @@ from .schema_builder import SignatureSchemaBuilder
 log = logging.getLogger(__name__)
 
 
-def _is_mysql_deadlock(exc: BaseException) -> bool:
-    """MySQL 1213 死锁判定：遍历异常链（sqlalchemy 包装 asyncmy 原始错误）命中 Deadlock 字样"""
+def _is_deadlock(exc: BaseException) -> bool:
+    """死锁判定：遍历异常链（sqlalchemy 包装 asyncmy 原始错误）命中 Deadlock 字样"""
     seen: set[int] = set()
     while exc is not None and id(exc) not in seen:
         seen.add(id(exc))
@@ -34,7 +36,12 @@ def _is_mysql_deadlock(exc: BaseException) -> bool:
 class UniversalToolRegistry:
     TOOL_EXECUTE_NAME = "execute_tool"
 
-    def __init__(self):
+    def __init__(self, trace_enabled: bool = True):
+        """创建注册中心。
+
+        :param trace_enabled: 执行追踪总开关，默认开启。关闭后即使配置了 trace 后端，工具执行也不会产生任何记录。
+        """
+        self._trace_enabled = trace_enabled
         self._tools: Dict[str, Dict[str, Any]] = {}
         self._categories: Dict[str, Any] = {}
         self._resources: Dict[str, Callable] = {}
@@ -42,6 +49,7 @@ class UniversalToolRegistry:
         self._scopes: Dict[str, Any] = {}
         self._before_execute: Callable = None
         self._after_execute: Callable = None
+        self._trace: AbstractAgentTrace = None
         self._schema_builder = SignatureSchemaBuilder()
 
     def set_before_execute(self, func: Callable):
@@ -49,6 +57,18 @@ class UniversalToolRegistry:
 
     def set_after_execute(self, func: Callable):
         self._after_execute = func
+
+    def set_trace_backend(self, trace: AbstractAgentTrace):
+        """配置执行追踪后端（shikigami.trace.AbstractAgentTrace 的实现）。
+
+        记录规则：
+        - 需构造时 trace_enabled=True（默认开启），且已配置后端，才会产生记录；
+        - 仅 register 注册的业务工具在 aexecute 中执行完毕后写入；
+        - 元工具（list_categories / list_tools / get_tool_info / execute_tool 与 meta_tool 注册的函数）不记录；
+        - agentId / traceId 从 context 读取（无则回退 agent_id / trace_id），缺任一即不记录；
+        - trace 写入失败仅记日志、不影响工具结果。
+        """
+        self._trace = trace
 
     def add_resource(self, resource_name: str, get_resource: Callable):
         self._resources[resource_name] = get_resource
@@ -321,6 +341,27 @@ class UniversalToolRegistry:
 
         return meta["func"], final_kwargs, meta["is_async"]
 
+    async def _record_execution(self, tool_name: str, tool_args: Any, result: Any, success: bool) -> None:
+        """业务工具执行完毕后写 trace：未开启追踪 / 未配置后端 / context 缺 agentId、traceId 时静默跳过"""
+        if not self._trace_enabled or self._trace is None:
+            return
+        cxt = context.get()
+        agent_id = cxt.get("agentId") or cxt.get("agent_id")
+        trace_id = cxt.get("traceId") or cxt.get("trace_id")
+        if not agent_id or not trace_id:
+            return
+        try:
+            args_data = jsonable(serialize_payload(tool_args))
+            result_data = jsonable(serialize_payload(result))
+            if args_data is None or result_data is None:
+                log.error("工具 %s 的 trace 负载无法序列化，已跳过记录", tool_name)
+                return
+            await self._trace.record(
+                agent_id, trace_id, tool_name, args_data, result_data,
+                status="success" if success else "error")
+        except Exception:
+            log.error("工具 %s 执行完毕但 trace 记录失败", tool_name, exc_info=True)
+
     async def aexecute(self, tool_name: str, tool_args: Dict[str, Any] = {}) -> Any:
         """执行具体的业务工具或元工具逻辑"""
         if tool_name == self.list_categories.__name__:
@@ -358,6 +399,7 @@ class UniversalToolRegistry:
         # 每次重试都重建 exit_stack（新 db session + 新事务），死锁回滚后无残留副作用。
         max_attempts = 3
         backoff = 0.05
+        executed = False  # 是否真正执行过业务函数（决定失败返回是否写入 trace）
         for attempt in range(max_attempts):
             try:
                 async with contextlib.AsyncExitStack() as exit_stack:
@@ -371,6 +413,7 @@ class UniversalToolRegistry:
                         error_msg = "; ".join(errors_list)
                         return f"入参校验失败: {error_msg}"
 
+                    executed = True
                     if is_async:
                         result = await func(**final_kwargs)
                     else:
@@ -383,11 +426,14 @@ class UniversalToolRegistry:
                                 self._after_execute(tool_name, tool_args)
                         except Exception as e:
                             log.error("工具 %s 调用后置处理函数异常", tool_name, exc_info=(type(e), e, e.__traceback__))
-                            return f"工具调用后置处理函数异常: {e}"
+                            err_text = f"工具调用后置处理函数异常: {e}"
+                            await self._record_execution(tool_name, tool_args, err_text, False)
+                            return err_text
+                    await self._record_execution(tool_name, tool_args, result, True)
                     return result
             except Exception as e:
-                if _is_mysql_deadlock(e) and attempt < max_attempts - 1:
-                    log.warning("工具 %s 触发 MySQL 死锁(1213)，%.0fms 后重试第 %d/%d 次",
+                if _is_deadlock(e) and attempt < max_attempts - 1:
+                    log.warning("工具 %s 触发死锁，%.0fms 后重试第 %d/%d 次",
                                 tool_name, backoff * 1000, attempt + 1, max_attempts)
                     await asyncio.sleep(backoff)
                     backoff *= 2
@@ -395,9 +441,13 @@ class UniversalToolRegistry:
                 # 业务异常（乐观锁拒绝/策略拒绝/校验失败等）与重试耗尽：转文本返回模型自纠，
                 # 避免单个工具失败 raise 崩掉整个 agent 回合；真人 HTTP 调用不经此路径不受影响
                 log.error("工具 %s 执行异常", tool_name, exc_info=(type(e), e, e.__traceback__))
-                if _is_mysql_deadlock(e):
-                    return f"工具执行失败（数据库死锁，重试{max_attempts}次仍冲突）: {e}"
-                return f"工具执行失败: {e}"
+                if _is_deadlock(e):
+                    err_text = f"工具执行失败（数据库死锁，重试{max_attempts}次仍冲突）: {e}"
+                else:
+                    err_text = f"工具执行失败: {e}"
+                if executed:
+                    await self._record_execution(tool_name, tool_args, err_text, False)
+                return err_text
         return None
 
     def execute(self, tool_name: str, tool_args: Dict[str, Any] = {}) -> Any:

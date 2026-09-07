@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["shikigami", "shikigami.registry"]
+packages = ["shikigami", "shikigami.registry", "shikigami.trace", "shikigami.utils"]
 
 [project]
 name = "shikigami"
@@ -31,12 +31,18 @@ dependencies = [
 [project.optional-dependencies]
 langchain = ["langchain-core>=0.1.0"]
 nest-asyncio = ["nest-asyncio>=1.6.0"]
+# trace 数据库后端（SqlAlchemyTrace）需 sqlalchemy，按目标数据库选装其一即可
+sqlite = ["sqlalchemy>=2.0.0", "aiosqlite>=0.20.0"]
+mysql = ["sqlalchemy>=2.0.0", "asyncmy>=0.2.9", "aiomysql>=0.2.0"]
+postgresql = ["sqlalchemy>=2.0.0", "asyncpg>=0.29.0"]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.21",
     "ruff>=0.1.0",
     "mypy>=1.0",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.20.0",
 ]
 
 [project.urls]
